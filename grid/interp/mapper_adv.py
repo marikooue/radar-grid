@@ -1,0 +1,358 @@
+"""
+grid.interp.mapper_adv
+==================
+
+A module for mapping radar data to rectilinear grids. Space-partitioning data
+structures known as kd-trees are used to efficiently search for k-nearest
+neighbours.
+
+"""
+
+
+import numpy as np
+from warnings import warn
+from scipy.spatial import cKDTree
+
+from pyart.config import get_fillvalue, get_field_name, get_metadata
+from pyart.core import Grid
+
+from . import common
+from ..util import transform
+from ..core import Weight
+
+#-added by oue 2017.05.11 for advection
+import netCDF4
+import datetime
+from scipy.interpolate import UnivariateSpline
+from pyart.util.datetime_utils import datetimes_from_dataset
+#---
+
+# Necessary and/or potential future improvements to mapper submodule:
+#
+# * The time each radar measurement is recorded is reported for each ray, not
+#   each gate, likely because it would be extreme overkill to record the
+#   sampling time at each gate. Need to make sure the nearest neighbor time
+#   field makes sense.
+
+
+def grid_radar_adv(radar, domain, weight=None, fields=None, gatefilter=None,
+               toa=17000.0, max_range=None, legacy=False, fill_value=None,
+               dist_field=None, weight_field=None, time_field=None,
+               gqi_field=None, debug=False, verbose=False, 
+               adv_u=None, adv_v=None, adv_x=None, adv_y=None, adv_z=None, along_elev=False,
+               profile_adv=False,u_sonde=None, v_sonde=None, alt_sonde=None, time_offset=0.0):
+    """
+    Map volumetric radar data to a rectilinear grid. This routine uses a k-d
+    tree space-partitioning data structure for the efficient searching of the
+    k-nearest neighbours.
+
+    Parameters
+    ----------
+    radar : NetCDF
+        Radar containing the fields to be mapped. X-Y projected PPI data
+    domain : Domain
+        Grid domain.
+    weight : Weight, optional
+        Weight defining the radar data objective analysis parameters and
+        storage of available kd-tree information. Default uses an isotropic
+        distance-dependent Barnes weight with a constant smoothing paramter.
+    fields : list-like, optional
+        Radar fields to be mapped. The None all available radar fields are
+        mapped.
+    gatefilter : pyart.filters.GateFilter, optional
+        GateFilter indicating which radar gates should be excluded when
+        mapping. The GateFilter is also used to determine the grid quality
+        index.
+    toa : float, optional
+        Top of the atmosphere in meters. Radar gates above this altitude are
+        ignored. Lower heights may increase processing time substantially but
+        may also produce poor results if this value is similar or lower than
+        the top of the grid domain.
+    max_range : float, optional
+        The maximum range of the radar in meters. Grid points not within this
+        range from the radar are excluded.
+    legacy : bool, optional
+        True to return a legacy Py-ART Grid. Note that the legacy Grid object
+        is planned for removal altogether in future Py-ART releases.
+    debug : bool, optional
+        True to print debugging information, False to suppress.
+    verbose : bool, optional
+        True to print relevant information, False to suppress.
+    u_sonde, v_sonde, alt_sonde : float, array, optional
+        1D array of u, v, and altitude profiles from sounding measurements
+        these are added to be used for advection correction
+    time_offset : float, optional
+        time offset in sec, from original time, 
+    Return
+    ------
+    grid : pyart.core.Grid
+        Grid containing the mapped volumetric radar data, grid coordinate
+        information, and metadata.
+
+    """
+
+    # Parse fill value
+    if fill_value is None:
+        fill_value = get_fillvalue()
+
+    # Parse field names
+    if dist_field is None:
+        dist_field = get_field_name('nearest_neighbor_distance')
+    if weight_field is None:
+        weight_field = get_field_name('nearest_neighbor_weight')
+    if time_field is None:
+        time_field = get_field_name('nearest_neighbor_time')
+    if gqi_field is None:
+        gqi_field = get_field_name('grid_quality_index')
+
+    # Parse fields to map
+    if fields is None:
+        fields = radar.fields.keys()
+    elif isinstance(fields, str):
+        fields = [fields]
+    fields = [field for field in fields if field in radar.fields]
+
+    # Parse radar data objective analysis weight
+    if weight is None:
+        weight = Weight(radar)
+
+    # Parse maximum range
+    if max_range is None:
+        max_range = radar.range['data'].max()
+
+    # advection added by oue 2017.05.11
+    if alt_sonde is None:
+        alt_sonde=np.arange(0.,10500,500);
+    if u_sonde is None:
+        u_sonde=np.zeros((alt_sonde.shape))
+    if v_sonde is None:
+        v_sonde=np.zeros((alt_sonde.shape))
+
+    # Calculate radar offset relative to the analysis grid origin
+    domain.radar_offset_from_origin(radar, debug=debug)
+
+    #--- xyz relative to radar
+    #z_r, y_r, x_r = domain.radar_offset
+    z_hat, y_hat, x_hat = transform.equivalent_earth_model(
+        radar, debug=debug, verbose=verbose, 
+        ellps=domain.ellps) 
+    weight._add_gate_reference([z_hat, y_hat, x_hat], replace_existing=False)
+    r_hat = np.sqrt((z_hat)**2 + (y_hat)**2 + (x_hat)**2)
+
+    # Compute Cartesian coordinates of radar gates relative to specified origin
+    # Add reference gate locations and current gate locations to weight object
+    # which will help determine if the kd-tree needs to be requeried or not
+    z_g, y_g, x_g = transform.equivalent_earth_model(
+        radar, offset=domain.radar_offset, debug=debug, verbose=verbose, 
+        ellps=domain.ellps) # ellps added by oue
+    #z_hat, y_hat, x_hat = z_g, y_g, x_g
+    #--- advection added by oue 2017.05.11  
+    print 'advection correction'
+    if profile_adv is True:
+        u_adv=UnivariateSpline(alt_sonde, u_sonde, s=0.5).__call__(z_g)
+        v_adv=UnivariateSpline(alt_sonde, v_sonde, s=0.5).__call__(z_g)
+    else:
+        combined_arrays = np.dstack([adv_z.ravel(),adv_y.ravel(),adv_x.ravel()])[0]
+        points_list = zip(z_g,y_g,x_g)
+        mytree = cKDTree(combined_arrays,leafsize=weight.leafsize,
+			compact_nodes=False,balanced_tree=False, copy_data=False)
+        dist, idx = mytree.query(points_list)
+        u_adv=adv_u.ravel()[idx]
+        v_adv=adv_v.ravel()[idx]
+        #n_z, = z_g.shape
+        #u_adv=np.zeros((n_z))
+        #v_adv=np.zeros((n_z))
+        #for iz in range(0,n_z):
+            #dis = np.sqrt((adv_x-x_g[iz])**2 + (adv_y-y_g[iz])**2 + (adv_z-z_g[iz])**2)
+            #idx = np.where( dis == dis.min() )
+            #u_adv[iz]=adv_u[idx[0],idx[1],idx[2]]
+            #v_adv[iz]=adv_v[idx[0],idx[1],idx[2]]
+    print 'advection correction'
+    timedif= radar.time['data'][:,np.newaxis].repeat(radar.ngates, axis=1).flatten()[:][:] - time_offset
+    dx_adv = u_adv * timedif
+    dy_adv = v_adv * timedif
+    x_g += -dx_adv
+    y_g += -dy_adv
+    if along_elev is True: # mode data along elevation angle
+        rng = radar.range['data']
+        ele = np.radians(radar.elevation['data'])
+        azi = np.radians(radar.azimuth['data'])
+        # Create radar coordinates mesh
+        ELE, RNG = np.meshgrid(ele, rng, indexing='ij')
+        AZI, RNG = np.meshgrid(azi, rng, indexing='ij')
+        RNG, AZI, ELE = RNG.flatten(), AZI.flatten(), ELE.flatten()
+        # Equivalent Earth radius in meters
+        R=6371.0; ke=4.0/3.0; Re = R * ke * 1000.0;
+        r_g = np.sqrt((y_g-domain.radar_offset[1])**2 + (x_g-domain.radar_offset[2])**2) / np.cos(ELE)
+        z_g = np.sqrt(r_g**2 + 2.0 * r_g * Re * np.sin(ELE) + Re**2) - Re + domain.radar_offset[0]
+
+    #----
+
+    weight._add_gate_reference([z_g, y_g, x_g], replace_existing=True)
+    weight._add_gate_coordinates([z_g, y_g, x_g])
+
+    if debug:
+        print 'Number of radar gates before pruning: {}'.format(z_g.size)
+
+    # Do not consider radar gates that are above the "top of the atmosphere"
+    is_below_toa = z_g <= toa
+
+    if debug:
+        N = is_below_toa.sum()
+        print 'Number of radar gates below TOA: {}'.format(N)
+
+    # Slice radar coordinates below the TOA
+    z_g = z_g[is_below_toa]
+    y_g = y_g[is_below_toa]
+    x_g = x_g[is_below_toa]
+
+    # Slice radar data fields below the TOA but preserve original radar data
+    radar_data = {}
+    for field in fields:
+        data = radar.fields[field]['data'].copy().flatten()
+        radar_data[field] = data[is_below_toa]
+
+    x_hat = x_hat[is_below_toa]
+    y_hat = y_hat[is_below_toa]
+    z_hat = z_hat[is_below_toa]
+    r_hat = r_hat[is_below_toa]
+    radar_data['x_hat'] = (x_hat)/r_hat
+    radar_data['y_hat'] = (y_hat)/r_hat
+    radar_data['z_hat'] = (z_hat)/r_hat
+    radar_data['delta_x'] = dx_adv
+    radar_data['delta_y'] = dy_adv
+
+    # Parse coordinates of analysis grid
+    z_a, y_a, x_a = domain.z, domain.y, domain.x
+    nz, ny, nx = domain.nz, domain.ny, domain.nx
+
+    if debug:
+        print 'Number of x grid points: {}'.format(nx)
+        print 'Number of y grid points: {}'.format(ny)
+        print 'Number of z grid points: {}'.format(nz)
+
+    # Create analysis domain coordinates mesh
+    z_a, y_a, x_a = np.meshgrid(z_a, y_a, x_a, indexing='ij')
+    z_a, y_a, x_a = z_a.flatten(), y_a.flatten(), x_a.flatten()
+
+    if debug:
+        print 'Grid 1-D array shape: {}'.format(z_a.shape)
+
+    # Query the radar gate k-d tree for the k-nearest analysis grid points.
+    # Also compute the distance-dependent weights
+    # This is the step that consumes the most processing time, but it can be
+    # skipped if results from a similar radar volume have already computed and
+    # stored in the weight object
+    if weight.requery(verbose=verbose):
+
+        # Create k-d tree object from radar gate locations
+        # Depending on the number of radar gates this can be resource intensive
+        # but nonetheless should take on the order of 1 second to create
+        weight.create_radar_tree(
+            zip(z_g, y_g, x_g), replace_existing=True, debug=debug,
+            verbose=verbose)
+
+        _, _ = weight.query_tree(
+            zip(z_a, y_a, x_a), store=True, debug=debug, verbose=verbose)
+
+        # Compute distance-dependent weights
+        _ = weight.compute_weights(weight.dists, store=True, verbose=verbose)
+
+        # Reset reference radar gate coordinates
+        weight._reset_gate_reference()
+
+    # Missing neighbors are indicated with an index set to tree.n
+    # This condition will not be met for the nearest neighbor scheme, but
+    # it can be met for the Cressman and Barnes schemes if the cutoff radius
+    # is not large enough
+    is_bad_index = weight.inds == weight.radar_tree.n
+
+    if debug:
+        N = is_bad_index.sum()
+        print 'Number of invalid indices: {}'.format(N)
+
+    # Grid points which are further than the specified maximum range away from
+    # the radar should not contribute
+    z_r, y_r, x_r = domain.radar_offset
+    _range = np.sqrt((z_a - z_r)**2 + (y_a - y_r)**2 + (x_a - x_r)**2)
+    is_far = _range > max_range
+
+
+    if debug:
+        N = is_far.sum()
+        print('Number of analysis points too far from radar: {}'.format(N))
+
+    # Populate grid fields
+    map_fields = {}
+    for field in fields:
+        if verbose:
+            print('Mapping radar field: {}'.format(field))
+
+        map_fields[field] = common.populate_field(
+            radar_data[field], weight.inds, (nz, ny, nx), field,
+            weights=weight.wq, mask=is_far, fill_value=None)
+
+    for field in ['x_hat','y_hat','z_hat']:
+        if verbose:
+            print('Mapping radar field: {}'.format(field))
+
+        map_fields[field] = common.populate_field(
+            radar_data[field], weight.inds, (nz, ny, nx), field,
+            weights=weight.wq, mask=is_far, fill_value=None)
+
+    for field in ['delta_x','delta_y']:
+        if verbose:
+            print('Mapping radar field: {}'.format(field))
+
+        map_fields[field] = common.populate_field(
+            radar_data[field], weight.inds, (nz, ny, nx), field,
+            weights=weight.wq, mask=is_far, fill_value=None)
+
+
+    # Add grid quality index field
+    if gatefilter is not None:
+
+        # Compute distance-dependent weighted average of k-nearest neighbors
+        # for included gates
+        sqi = gatefilter.gate_included.flatten()[is_below_toa]
+        gqi = np.average(sqi[weight.inds], weights=weight.wq, axis=1)
+        gqi[is_far] = 0.0
+        map_fields[gqi_field] = get_metadata(gqi_field)
+        map_fields[gqi_field]['data'] = gqi.reshape(
+            nz, ny, nx).astype(np.float32)
+
+    # Add nearest neighbor distance field
+    map_fields[dist_field] = get_metadata(dist_field)
+    map_fields[dist_field]['data'] = weight.dists[:,0].reshape(
+        nz, ny, nx).astype(np.float32)
+
+    # Mask too small weights : added by oue 2017.10.07
+    wgt=weight.wq
+    is_messy = wgt < 0.00000001
+    weight.wq = np.ma.masked_where(is_messy, wgt)
+    weight.wq = np.ma.filled(weight.wq, 0.0)
+
+    # Add nearest neighbor weight field
+    map_fields[weight_field] = get_metadata(weight_field)
+    map_fields[weight_field]['data'] = weight.wq[:,0].reshape(
+        nz, ny, nx).astype(np.float32)
+
+    # Add nearest neighbor time field
+    time = radar.time['data'][:,np.newaxis].repeat(
+        radar.ngates, axis=1).flatten()[is_below_toa][weight.inds]
+    map_fields[time_field] = get_metadata(time_field)
+    map_fields[time_field]['data'] = time[:,0].reshape(
+        nz, ny, nx).astype(np.float32)
+    map_fields[time_field]['units'] = radar.time['units']
+
+    # Populate grid metadata
+    metadata = common._populate_metadata(radar, weight=weight)
+
+    if legacy:
+        axes = common._populate_legacy_axes(radar, domain)
+        grid = Grid.from_legacy_parameters(map_fields, axes, metadata)
+    else:
+        grid = None
+
+    return grid
+

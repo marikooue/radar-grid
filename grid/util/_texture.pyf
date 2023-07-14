@@ -1,0 +1,21 @@
+!    -*- f90 -*-
+! Note: the context of this file is case sensitive.
+
+python module _texture ! in 
+    interface  ! in :_texture
+        subroutine compute_texture(field,x_window,y_window,fill_value,nx,ny,nz,sigma,sample) ! in :_texture:_texture.f90
+            real(kind=8) dimension(nz,ny,nx),intent(in) :: field
+            integer(kind=4) intent(in) :: x_window
+            integer(kind=4) intent(in) :: y_window
+            real(kind=8) intent(in) :: fill_value
+            integer(kind=4), optional,intent(in),check(shape(field,2)==nx),depend(field) :: nx=shape(field,2)
+            integer(kind=4), optional,intent(in),check(shape(field,1)==ny),depend(field) :: ny=shape(field,1)
+            integer(kind=4), optional,intent(in),check(shape(field,0)==nz),depend(field) :: nz=shape(field,0)
+            real(kind=8) dimension(nz,ny,nx),intent(out),depend(nz,ny,nx) :: sigma
+            integer(kind=4) dimension(nz,ny,nx),intent(out),depend(nz,ny,nx) :: sample
+        end subroutine compute_texture
+    end interface 
+end python module _texture
+
+! This file was auto-generated with f2py (version:2).
+! See http://cens.ioc.ee/projects/f2py2e/
