@@ -1,28 +1,58 @@
-# README #
+### Quick summary ###
 
-This README would normally document whatever steps are necessary to get your application up and running.
+This is a Python module for converting the polar coordinated radar data into a Cartesian
+grid developed by North et al. (2017).
 
-### What is this repository for? ###
+This wind retrieval code is licensed under GNU GENERAL PUBLIC LICENSE (GNU GPL).
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+If you use this software in publication, an acknowledgment and citation of the following
+paper(s) would be appreciated. If you have any comments, suggestions for improvements,
+bug fixes or you need help to
+interface the software with your radar data, please contact us.
 
-### How do I get set up? ###
+Please cite the following paper:
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+North, K. W., M. Oue, P. Kollias, S. E. Giangrande, S. M. Collis, and C. K. Potvin, 2017:
+Vertical air motion retrievals in deep convective clouds using the ARM scanning radar
+network in Oklahoma during MC3E. Atmospheric Measurement Techniques, vol. 10, 2785-2806,
+doi: 10.5194/amt-10-2785-2017.
 
-### Contribution guidelines ###
+### Related software ###
 
-* Writing tests
-* Code review
-* Other guidelines
+The 3D Cartesian gridded radar data created by this code can be used for the multi-Doppler radar 3DVAR wind retrieval:
+https://github.com/marikooue/radar-wind/
 
-### Contact ###
+### Related publications ###
 
-* Kirk North <kirk.north@mail.mcgill.ca> (**admin**)
+Oue, M., A. Tatarevic, P. Kollias, D. Wang, K. Yu, and A. M. Vogelmann, 2020: The
+Cloud-resolving model Radar SIMulator (CR-SIM) Version 3.3: description and applications
+of a virtual observatory, Geosci. Model Dev., 13, 1975-1998,
+https://doi.org/10.5194/gmd-13-1975-2020
+
+Borque, P., S.W. Nesbitt, R.J. Trapp, S. Lasher-Trapp, and M. Oue, 2020: Observational
+Study of the Thermodynamics and Morphological Characteristics of a Midlatitude Continental
+Cold Pool Event. Mon. Wea. Rev., 148, 719-737, https://doi.org/10.1175/MWR-D-19-0068.1
+
+Kollias, P., N. Bharadwaj, E.E. Clothiaux, K. Lamer, M. Oue, J. Hardin, B. Isom,
+I. Lindenmaier, A. Matthews, E.P. Luke, S.E. Giangrande, K. Johnson, S. Collis,
+J. Comstock, and J.H. Mather, 2020: The ARM Radar Network: At the Leading Edge of Cloud
+and Precipitation Observations. Bull. Amer. Meteor. Soc., 101, E588-E607,
+https://doi.org/10.1175/BAMS-D-18-0288.1
+
+Oue, M., P. Kollias, A. Shapiro, A. Tatarevic, and T. Matsui, 2019: Investigation of
+observational error sources in multi-Doppler-radar three-dimensional variational vertical
+air motion retrievals. Atmos. Meas. Tech., 1999-2018,
+https://doi.org/10.5194/amt-12-1999-2019
+
+North, K. W., M. Oue, P. Kollias, S. E. Giangrande, S. M. Collis, and C. K. Potvin, 2017:
+Vertical air motion retrievals in deep convective clouds using the ARM scanning radar
+network in Oklahoma during MC3E. Atmospheric Measurement Techniques, vol. 10, 2785-2806,
+https://doi.org/10.5194/amt-10-2785-2017
+
+
+
+### Contacts ###
+
+* [Mariko Oue](mailto:mariko.oue@stonybrook.edu)
+* [Kirk North](mailto:kirk.w.north@gmail.com)
+* [Pavlos Kollias](mailto:pavlos.kollias@stonybrook.edu)
