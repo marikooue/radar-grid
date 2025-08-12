@@ -75,9 +75,9 @@ class Domain(object):
         radar_z = radar_alt - self.alt_0
 
         if debug:
-            print('Radar x in grid: {:.2f} km'.format(radar_x / 1000.0))
-            print('Radar y in grid: {:.2f} km'.format(radar_y / 1000.0))
-            print('Radar z in grid: {:.2f} km'.format(radar_z / 1000.0))
+            print 'Radar x in grid: {:.2f} km'.format(radar_x / 1000.0)
+            print 'Radar y in grid: {:.2f} km'.format(radar_y / 1000.0)
+            print 'Radar z in grid: {:.2f} km'.format(radar_z / 1000.0)
 
         self.radar_offset = (radar_z, radar_y, radar_x)
 

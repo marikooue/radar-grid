@@ -107,7 +107,7 @@ def grid_radar_adv(radar, domain, weight=None, fields=None, gatefilter=None,
 
     # Parse fields to map
     if fields is None:
-        fields = list(radar.fields.keys())
+        fields = radar.fields.keys()
     elif isinstance(fields, str):
         fields = [fields]
     fields = [field for field in fields if field in radar.fields]
@@ -147,13 +147,13 @@ def grid_radar_adv(radar, domain, weight=None, fields=None, gatefilter=None,
         ellps=domain.ellps) # ellps added by oue
     #z_hat, y_hat, x_hat = z_g, y_g, x_g
     #--- advection added by oue 2017.05.11  
-    print('advection correction')
+    print 'advection correction'
     if profile_adv is True:
         u_adv=UnivariateSpline(alt_sonde, u_sonde, s=0.5).__call__(z_g)
         v_adv=UnivariateSpline(alt_sonde, v_sonde, s=0.5).__call__(z_g)
     else:
         combined_arrays = np.dstack([adv_z.ravel(),adv_y.ravel(),adv_x.ravel()])[0]
-        points_list = list(zip(z_g,y_g,x_g))
+        points_list = zip(z_g,y_g,x_g)
         mytree = cKDTree(combined_arrays,leafsize=weight.leafsize,
 			compact_nodes=False,balanced_tree=False, copy_data=False)
         dist, idx = mytree.query(points_list)
@@ -167,7 +167,7 @@ def grid_radar_adv(radar, domain, weight=None, fields=None, gatefilter=None,
             #idx = np.where( dis == dis.min() )
             #u_adv[iz]=adv_u[idx[0],idx[1],idx[2]]
             #v_adv[iz]=adv_v[idx[0],idx[1],idx[2]]
-    print('advection correction')
+    print 'advection correction'
     timedif= radar.time['data'][:,np.newaxis].repeat(radar.ngates, axis=1).flatten()[:][:] - time_offset
     dx_adv = u_adv * timedif
     dy_adv = v_adv * timedif
@@ -192,14 +192,14 @@ def grid_radar_adv(radar, domain, weight=None, fields=None, gatefilter=None,
     weight._add_gate_coordinates([z_g, y_g, x_g])
 
     if debug:
-        print('Number of radar gates before pruning: {}'.format(z_g.size))
+        print 'Number of radar gates before pruning: {}'.format(z_g.size)
 
     # Do not consider radar gates that are above the "top of the atmosphere"
     is_below_toa = z_g <= toa
 
     if debug:
         N = is_below_toa.sum()
-        print('Number of radar gates below TOA: {}'.format(N))
+        print 'Number of radar gates below TOA: {}'.format(N)
 
     # Slice radar coordinates below the TOA
     z_g = z_g[is_below_toa]
@@ -227,16 +227,16 @@ def grid_radar_adv(radar, domain, weight=None, fields=None, gatefilter=None,
     nz, ny, nx = domain.nz, domain.ny, domain.nx
 
     if debug:
-        print('Number of x grid points: {}'.format(nx))
-        print('Number of y grid points: {}'.format(ny))
-        print('Number of z grid points: {}'.format(nz))
+        print 'Number of x grid points: {}'.format(nx)
+        print 'Number of y grid points: {}'.format(ny)
+        print 'Number of z grid points: {}'.format(nz)
 
     # Create analysis domain coordinates mesh
     z_a, y_a, x_a = np.meshgrid(z_a, y_a, x_a, indexing='ij')
     z_a, y_a, x_a = z_a.flatten(), y_a.flatten(), x_a.flatten()
 
     if debug:
-        print('Grid 1-D array shape: {}'.format(z_a.shape))
+        print 'Grid 1-D array shape: {}'.format(z_a.shape)
 
     # Query the radar gate k-d tree for the k-nearest analysis grid points.
     # Also compute the distance-dependent weights
@@ -249,11 +249,11 @@ def grid_radar_adv(radar, domain, weight=None, fields=None, gatefilter=None,
         # Depending on the number of radar gates this can be resource intensive
         # but nonetheless should take on the order of 1 second to create
         weight.create_radar_tree(
-            list(zip(z_g, y_g, x_g)), replace_existing=True, debug=debug,
+            zip(z_g, y_g, x_g), replace_existing=True, debug=debug,
             verbose=verbose)
 
         _, _ = weight.query_tree(
-            list(zip(z_a, y_a, x_a)), store=True, debug=debug, verbose=verbose)
+            zip(z_a, y_a, x_a), store=True, debug=debug, verbose=verbose)
 
         # Compute distance-dependent weights
         _ = weight.compute_weights(weight.dists, store=True, verbose=verbose)
@@ -269,7 +269,7 @@ def grid_radar_adv(radar, domain, weight=None, fields=None, gatefilter=None,
 
     if debug:
         N = is_bad_index.sum()
-        print('Number of invalid indices: {}'.format(N))
+        print 'Number of invalid indices: {}'.format(N)
 
     # Grid points which are further than the specified maximum range away from
     # the radar should not contribute
@@ -280,13 +280,13 @@ def grid_radar_adv(radar, domain, weight=None, fields=None, gatefilter=None,
 
     if debug:
         N = is_far.sum()
-        print(('Number of analysis points too far from radar: {}'.format(N)))
+        print('Number of analysis points too far from radar: {}'.format(N))
 
     # Populate grid fields
     map_fields = {}
     for field in fields:
         if verbose:
-            print(('Mapping radar field: {}'.format(field)))
+            print('Mapping radar field: {}'.format(field))
 
         map_fields[field] = common.populate_field(
             radar_data[field], weight.inds, (nz, ny, nx), field,
@@ -294,7 +294,7 @@ def grid_radar_adv(radar, domain, weight=None, fields=None, gatefilter=None,
 
     for field in ['x_hat','y_hat','z_hat']:
         if verbose:
-            print(('Mapping radar field: {}'.format(field)))
+            print('Mapping radar field: {}'.format(field))
 
         map_fields[field] = common.populate_field(
             radar_data[field], weight.inds, (nz, ny, nx), field,
@@ -302,7 +302,7 @@ def grid_radar_adv(radar, domain, weight=None, fields=None, gatefilter=None,
 
     for field in ['delta_x','delta_y']:
         if verbose:
-            print(('Mapping radar field: {}'.format(field)))
+            print('Mapping radar field: {}'.format(field))
 
         map_fields[field] = common.populate_field(
             radar_data[field], weight.inds, (nz, ny, nx), field,

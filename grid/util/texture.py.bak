@@ -51,7 +51,7 @@ def add_textures(grid, fields=None, window=(3, 3), min_sample=5,
 
     # Parse the fields to compute textures from
     if fields is None:
-        fields = list(grid.fields.keys())
+        fields = grid.fields.keys()
     elif isinstance(fields, str):
         fields = [fields]
     else:
@@ -63,7 +63,7 @@ def add_textures(grid, fields=None, window=(3, 3), min_sample=5,
     for field in fields:
 
         if verbose:
-            print('Computing texture field: {}'.format(field))
+            print 'Computing texture field: {}'.format(field)
 
         _add_texture(
             grid, field, x_window=x_window, y_window=y_window,
@@ -119,7 +119,7 @@ def _add_texture(grid, field, x_window=3, y_window=3, min_sample=5,
 
     if debug:
         N = np.ma.count(data)
-        print('Sample size of data field: {}'.format(N))
+        print 'Sample size of data field: {}'.format(N)
 
     # Prepare data for ingest into Fortran wrapper
     data = np.ma.filled(data, fill_value)
@@ -137,7 +137,7 @@ def _add_texture(grid, field, x_window=3, y_window=3, min_sample=5,
 
     if debug:
         N = np.ma.count(sigma)
-        print('Sample size of texture field: {}'.format(N))
+        print 'Sample size of texture field: {}'.format(N)
 
     # Create texture field dictionary
     sigma_dict = {

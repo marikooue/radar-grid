@@ -111,7 +111,7 @@ def grid_radar(radar, domain, weight=None, fields=None, gatefilter=None,
 
     # Parse fields to map
     if fields is None:
-        fields = list(radar.fields.keys())
+        fields = radar.fields.keys()
     elif isinstance(fields, str):
         fields = [fields]
     fields = [field for field in fields if field in radar.fields]
@@ -155,14 +155,14 @@ def grid_radar(radar, domain, weight=None, fields=None, gatefilter=None,
     weight._add_gate_coordinates([z_g, y_g, x_g])
 
     if debug:
-        print('Number of radar gates before pruning: {}'.format(z_g.size))
+        print 'Number of radar gates before pruning: {}'.format(z_g.size)
 
     # Do not consider radar gates that are above the "top of the atmosphere"
     is_below_toa = z_g <= toa
 
     if debug:
         N = is_below_toa.sum()
-        print('Number of radar gates below TOA: {}'.format(N))
+        print 'Number of radar gates below TOA: {}'.format(N)
 
     # Slice radar coordinates below the TOA
     z_g = z_g[is_below_toa]
@@ -180,16 +180,16 @@ def grid_radar(radar, domain, weight=None, fields=None, gatefilter=None,
     nz, ny, nx = domain.nz, domain.ny, domain.nx
 
     if debug:
-        print('Number of x grid points: {}'.format(nx))
-        print('Number of y grid points: {}'.format(ny))
-        print('Number of z grid points: {}'.format(nz))
+        print 'Number of x grid points: {}'.format(nx)
+        print 'Number of y grid points: {}'.format(ny)
+        print 'Number of z grid points: {}'.format(nz)
 
     # Create analysis domain coordinates mesh
     z_a, y_a, x_a = np.meshgrid(z_a, y_a, x_a, indexing='ij')
     z_a, y_a, x_a = z_a.flatten(), y_a.flatten(), x_a.flatten()
 
     if debug:
-        print('Grid 1-D array shape: {}'.format(z_a.shape))
+        print 'Grid 1-D array shape: {}'.format(z_a.shape)
 
     # Query the radar gate k-d tree for the k-nearest analysis grid points.
     # Also compute the distance-dependent weights
@@ -202,11 +202,11 @@ def grid_radar(radar, domain, weight=None, fields=None, gatefilter=None,
         # Depending on the number of radar gates this can be resource intensive
         # but nonetheless should take on the order of 1 second to create
         weight.create_radar_tree(
-            list(zip(z_g, y_g, x_g)), replace_existing=True, debug=debug,
+            zip(z_g, y_g, x_g), replace_existing=True, debug=debug,
             verbose=verbose)
 
         _, _ = weight.query_tree(
-            list(zip(z_a, y_a, x_a)), store=True, debug=debug, verbose=verbose)
+            zip(z_a, y_a, x_a), store=True, debug=debug, verbose=verbose)
 
         # Compute distance-dependent weights
         _ = weight.compute_weights(weight.dists, store=True, verbose=verbose)
@@ -222,7 +222,7 @@ def grid_radar(radar, domain, weight=None, fields=None, gatefilter=None,
 
     if debug:
         N = is_bad_index.sum()
-        print('Number of invalid indices: {}'.format(N))
+        print 'Number of invalid indices: {}'.format(N)
 
     # Grid points which are further than the specified maximum range away from
     # the radar should not contribute
@@ -232,13 +232,13 @@ def grid_radar(radar, domain, weight=None, fields=None, gatefilter=None,
 
     if debug:
         N = is_far.sum()
-        print(('Number of analysis points too far from radar: {}'.format(N)))
+        print('Number of analysis points too far from radar: {}'.format(N))
 
     # Populate grid fields
     map_fields = {}
     for field in fields:
         if verbose:
-            print(('Mapping radar field: {}'.format(field)))
+            print('Mapping radar field: {}'.format(field))
 
         map_fields[field] = common.populate_field(
             radar_data[field], weight.inds, (nz, ny, nx), field,
@@ -291,51 +291,7 @@ def grid_radar(radar, domain, weight=None, fields=None, gatefilter=None,
         axes = common._populate_legacy_axes(radar, domain)
         grid = Grid.from_legacy_parameters(map_fields, axes, metadata)
     else:
-        timegrid=get_metadata('grid_time')
-        timegrid['data']=np.atleast_1d(radar.time['data'].min()).astype(np.float64)
-        timegrid['units']=radar.time['units']
-
-        time_start = get_metadata('grid_time_start')
-        time_start['data'] = np.atleast_1d(
-            radar.time['data'].min()).astype(np.float64)
-        time_start['units'] = radar.time['units']
-
-        time_end = get_metadata('grid_time_end')
-        time_end['data'] = np.atleast_1d(
-            radar.time['data'].max()).astype(np.float64)
-        time_end['units'] = radar.time['units']
-        
-        alt = get_metadata('origin_altitude')
-        alt['data'] = np.atleast_1d(domain.alt_0).astype(np.float32)
-
-        lat = get_metadata('origin_latitude')
-        lat['data'] = np.atleast_1d(domain.lat_0).astype(np.float32)
-
-        lon = get_metadata('origin_longitude')
-        lon['data'] = np.atleast_1d(domain.lon_0).astype(np.float32)
-
-        x=get_metadata('x')
-        x['data'] = domain.x
-        x['long_name']	= 'X distance on the projection plane from the origin'
-        x['units'] = 'meters'
-        x['standard_name']='projection_x_coordinate'
-        x['axis']='X'
-        y=get_metadata('y')
-        y['data'] = domain.y
-        y['long_name'] = 'Y distance on the projection plane from the origin'
-        y['units'] = 'meters'
-        y['standard_name']='projection_y_coordinate'
-        y['axis']='Y'
-        z=get_metadata('z')
-        z['data'] = domain.z
-        z['long_name'] = 'Z distance on the projection plane from the origin'
-        z['units'] = 'meters'
-        z['positive'] = 'up'
-        z['standard_name']='projection_z_coordinate'
-        z['axis']='Z'
-        grid = Grid(timegrid, map_fields, metadata,
-                   lat, lon, alt,
-                   x, y, z);
+        grid = None
 
     return grid
 
@@ -408,7 +364,7 @@ def grid_radar_nearest_neighbour(
 
     # Parse fields to map
     if fields is None:
-        fields = list(radar.fields.keys())
+        fields = radar.fields.keys()
     if isinstance(fields, str):
         fields = [fields]
     fields = [field for field in fields if field in radar.fields]
@@ -422,7 +378,7 @@ def grid_radar_nearest_neighbour(
 
     if debug:
         N = z_g.size
-        print('Number of radar gates before pruning: {}'.format(N))
+        print 'Number of radar gates before pruning: {}'.format(N)
 
     # Do not consider radar gates that are past the "top of the atmosphere"
     # This will speed up processing time during the creation of the k-d tree
@@ -431,7 +387,7 @@ def grid_radar_nearest_neighbour(
 
     if debug:
         n = is_below_toa.sum()
-        print('Number of radar gates below TOA: {}'.format(n))
+        print 'Number of radar gates below TOA: {}'.format(n)
 
     # Slice radar coordinates below the TOA
     z_g = z_g[is_below_toa]
@@ -448,46 +404,46 @@ def grid_radar_nearest_neighbour(
     # Depending on the number of radar gates this can be resource intensive
     # but nonetheless should take on the order of 1 second to create
     if debug:
-        print('Creating k-d tree instance for radar gate locations')
+        print 'Creating k-d tree instance for radar gate locations'
     tree_g = cKDTree(
-        list(zip(z_g, y_g, x_g)), leafsize=leafsize, compact_nodes=False,
+        zip(z_g, y_g, x_g), leafsize=leafsize, compact_nodes=False,
         balanced_tree=False, copy_data=False)
 
     if debug:
-        print('tree.m = {}'.format(tree_g.m))
-        print('tree.n = {}'.format(tree_g.n))
+        print 'tree.m = {}'.format(tree_g.m)
+        print 'tree.n = {}'.format(tree_g.n)
 
     # Parse coordinates of analysis grid
     z_a, y_a, x_a = domain.z, domain.y, domain.x
     nz, ny, nx = domain.nz, domain.ny, domain.nx
 
     if debug:
-        print('Number of x grid points: {}'.format(nx))
-        print('Number of y grid points: {}'.format(ny))
-        print('Number of z grid points: {}'.format(nz))
+        print 'Number of x grid points: {}'.format(nx)
+        print 'Number of y grid points: {}'.format(ny)
+        print 'Number of z grid points: {}'.format(nz)
 
     # Create analysis domain coordinates mesh
     z_a, y_a, x_a = np.meshgrid(z_a, y_a, x_a, indexing='ij')
     z_a, y_a, x_a = z_a.flatten(), y_a.flatten(), x_a.flatten()
 
     if debug:
-        print('Grid 1-D array shape: {}'.format(z_a.shape))
+        print 'Grid 1-D array shape: {}'.format(z_a.shape)
 
     # Query the radar gate k-d tree for the nearest analysis grid points
     # This is the step that consumes the most processing time
     if debug:
-        print('Querying k-d tree for the k-nearest analysis grid points')
+        print 'Querying k-d tree for the k-nearest analysis grid points'
     dists, inds = tree_g.query(
-        list(zip(z_a, y_a, x_a)), k=1, p=2.0, eps=0.0, distance_upper_bound=np.inf,
+        zip(z_a, y_a, x_a), k=1, p=2.0, eps=0.0, distance_upper_bound=np.inf,
         n_jobs=1)
 
     if debug:
-        print('Distance array shape: {}'.format(dists.shape))
-        print('Minimum gate-grid distance: {:.2f} m'.format(dists.min()))
-        print('Maximum gate-grid distance: {:.2f} m'.format(dists.max()))
-        print('Index array shape: {}'.format(inds.shape))
-        print('Minimum index: {}'.format(inds.min()))
-        print('Maximum index: {}'.format(inds.max()))
+        print 'Distance array shape: {}'.format(dists.shape)
+        print 'Minimum gate-grid distance: {:.2f} m'.format(dists.min())
+        print 'Maximum gate-grid distance: {:.2f} m'.format(dists.max())
+        print 'Index array shape: {}'.format(inds.shape)
+        print 'Minimum index: {}'.format(inds.min())
+        print 'Maximum index: {}'.format(inds.max())
 
     # Grid points which are further than the specified maximum range away from
     # the radar should not contribute
@@ -497,13 +453,13 @@ def grid_radar_nearest_neighbour(
 
     if debug:
         n = is_far.sum()
-        print('Number of analysis points too far from radar: {}'.format(n))
+        print 'Number of analysis points too far from radar: {}'.format(n)
 
     # Populate grid fields
     map_fields = {}
     for field in fields:
         if debug:
-            print('Mapping radar field: {}'.format(field))
+            print 'Mapping radar field: {}'.format(field)
 
         map_fields[field] = common.populate_field(
             radar_data[field], inds, (nz, ny, nx), field, weights=None,
@@ -538,50 +494,6 @@ def grid_radar_nearest_neighbour(
         axes = common._populate_legacy_axes(radar, domain)
         grid = Grid.from_legacy_parameters(map_fields, axes, metadata)
     else:
-        timegrid=get_metadata('grid_time')
-        timegrid['data']=np.atleast_1d(radar.time['data'].min()).astype(np.float64)
-        timegrid['units']=radar.time['units']
-
-        time_start = get_metadata('grid_time_start')
-        time_start['data'] = np.atleast_1d(
-            radar.time['data'].min()).astype(np.float64)
-        time_start['units'] = radar.time['units']
-
-        time_end = get_metadata('grid_time_end')
-        time_end['data'] = np.atleast_1d(
-            radar.time['data'].max()).astype(np.float64)
-        time_end['units'] = radar.time['units']
-	
-        alt = get_metadata('origin_altitude')
-        alt['data'] = np.atleast_1d(domain.alt_0).astype(np.float32)
-
-        lat = get_metadata('origin_latitude')
-        lat['data'] = np.atleast_1d(domain.lat_0).astype(np.float32)
-
-        lon = get_metadata('origin_longitude')
-        lon['data'] = np.atleast_1d(domain.lon_0).astype(np.float32)
-
-        x=get_metadata('x')
-        x['data'] = domain.x
-        x['long_name']  = 'X distance on the projection plane from the origin'
-        x['units'] = 'meters'
-        x['standard_name']='projection_x_coordinate'
-        x['axis']='X'
-        y=get_metadata('y')
-        y['data'] = domain.y
-        y['long_name'] = 'Y distance on the projection plane from the origin'
-        y['units'] = 'meters'
-        y['standard_name']='projection_y_coordinate'
-        y['axis']='Y'
-        z=get_metadata('z')
-        z['data'] = domain.z
-        z['long_name'] = 'Z distance on the projection plane from the origin'
-        z['units'] = 'meters'
-        z['positive'] = 'up'
-        z['standard_name']='projection_z_coordinate'
-        z['axis']='Z'
-        grid = Grid(timegrid, map_fields, metadata,
-                   lat, lon, alt,
-                   x, y, z);
+        grid = None
 
     return grid

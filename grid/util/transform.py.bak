@@ -89,7 +89,7 @@ def equivalent_earth_model(
     y = s * np.cos(AZI)
     #- added by oue for crsim? sphere option
     if ellps is 'sphere':
-        print(ellps)
+        print ellps
         z = RNG * np.sin(ELE)
         x = RNG * np.sin(AZI)
         y = RNG * np.cos(AZI)
@@ -131,8 +131,8 @@ def geocentric_radius(lat, geod=None, verbose=False):
     a, b = geod.a, geod.b
 
     if verbose:
-        print('Major radius (equitorial) : {:.3f} km'.format(a / 1000.0))
-        print('Minor radius (polar) .... : {:.3f} km'.format(b / 1000.0))
+        print 'Major radius (equitorial) : {:.3f} km'.format(a / 1000.0)
+        print 'Minor radius (polar) .... : {:.3f} km'.format(b / 1000.0)
 
     # Parse latitude data and convert degrees to radians
     phi = np.radians(lat)

@@ -152,14 +152,14 @@ class Weight(object):
         """
         if self.radar_tree is None or replace_existing:
             if verbose:
-                print('Creating k-d tree instance for radar gate locations')
+                print 'Creating k-d tree instance for radar gate locations'
             self.radar_tree = cKDTree(
                 coords, leafsize=self.leafsize, compact_nodes=False,
                 balanced_tree=False, copy_data=False)
 
         if debug:
-            print('tree.m = {}'.format(self.radar_tree.m))
-            print('tree.n = {}'.format(self.radar_tree.n))
+            print 'tree.m = {}'.format(self.radar_tree.m)
+            print 'tree.n = {}'.format(self.radar_tree.n)
 
         return
 
@@ -191,31 +191,31 @@ class Weight(object):
             raise ValueError('No radar kd-tree exists')
 
         if verbose:
-            print('Querying k-d tree for the k-nearest analysis grid points')
+            print 'Querying k-d tree for the k-nearest analysis grid points'
 
         if debug:
             start = time.time()
 
         # Query the kd-tree
         dists, inds = self.radar_tree.query(
-            coords, k=self.k, p=2.0, eps=0.0, workers=self.proc,
+            coords, k=self.k, p=2.0, eps=0.0, n_jobs=self.proc,
             distance_upper_bound=self.cutoff_radius)
 
         if debug:
             elapsed = time.time() - start
-            print('Elapsed time for query: {:.2f} sec'.format(elapsed))
+            print 'Elapsed time for query: {:.2f} sec'.format(elapsed)
 
         if store:
             self.dists = dists
             self.inds = inds
 
         if debug:
-            print('Distance array shape: {}'.format(dists.shape))
-            print('Minimum gate-grid distance: {:.2f} m'.format(dists.min()))
-            print('Maximum gate-grid distance: {:.2f} m'.format(dists.max()))
-            print('Index array shape: {}'.format(inds.shape))
-            print('Minimum index: {}'.format(inds.min()))
-            print('Maximum index: {}'.format(inds.max()))
+            print 'Distance array shape: {}'.format(dists.shape)
+            print 'Minimum gate-grid distance: {:.2f} m'.format(dists.min())
+            print 'Maximum gate-grid distance: {:.2f} m'.format(dists.max())
+            print 'Index array shape: {}'.format(inds.shape)
+            print 'Minimum index: {}'.format(inds.min())
+            print 'Maximum index: {}'.format(inds.max())
 
         return dists, inds
 
@@ -251,7 +251,7 @@ class Weight(object):
             # First check: same number of gates
             if z_ref.size != z_g.size:
                 if verbose:
-                    print('Radar volumes have different number of gates')
+                    print 'Radar volumes have different number of gates'
                 return True
 
             # Second check: similar gate locations and ordering
@@ -260,14 +260,14 @@ class Weight(object):
             z_close = np.allclose(z_ref, z_g, rtol=1.0e-15, atol=atol)
             if not x_close or not y_close or not z_close :
                 if verbose:
-                    print('Radar volumes are ordered differently')
+                    print 'Radar volumes are ordered differently'
                 return True
             else:
                 return False
 
         else:
             if verbose:
-                print('No radar kd-tree exists')
+                print 'No radar kd-tree exists'
             return True
 
 
@@ -293,7 +293,7 @@ class Weight(object):
         """
 
         if verbose:
-            print('Computing distance-dependent weights')
+            print 'Computing distance-dependent weights'
 
         wq = self.func(dists)
         wq[wq<=0.0]=np.nan; #added by oue 20180417
@@ -330,7 +330,7 @@ class Weight(object):
         self.distance_weight_vanishes = dists[idx]
 
         if verbose:
-            print('Distance weight vanishes: {:.2f} m'.format(dists[idx]))
+            print 'Distance weight vanishes: {:.2f} m'.format(dists[idx])
 
         return
 

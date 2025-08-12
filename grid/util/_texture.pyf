@@ -8,14 +8,15 @@ python module _texture ! in
             integer(kind=4) intent(in) :: x_window
             integer(kind=4) intent(in) :: y_window
             real(kind=8) intent(in) :: fill_value
-            integer(kind=4), optional,intent(in),check(shape(field,2)==nx),depend(field) :: nx=shape(field,2)
-            integer(kind=4), optional,intent(in),check(shape(field,1)==ny),depend(field) :: ny=shape(field,1)
-            integer(kind=4), optional,intent(in),check(shape(field,0)==nz),depend(field) :: nz=shape(field,0)
-            real(kind=8) dimension(nz,ny,nx),intent(out),depend(nz,ny,nx) :: sigma
-            integer(kind=4) dimension(nz,ny,nx),intent(out),depend(nz,ny,nx) :: sample
+            integer(kind=4), optional,intent(in),check(shape(field, 2) == nx),depend(field) :: nx=shape(field, 2)
+            integer(kind=4), optional,intent(in),check(shape(field, 1) == ny),depend(field) :: ny=shape(field, 1)
+            integer(kind=4), optional,intent(in),check(shape(field, 0) == nz),depend(field) :: nz=shape(field, 0)
+            real(kind=8) dimension(nz,ny,nx),intent(out),depend(ny,nx,nz) :: sigma
+            integer(kind=4) dimension(nz,ny,nx),intent(out),depend(ny,nx,nz) :: sample
         end subroutine compute_texture
     end interface 
 end python module _texture
 
-! This file was auto-generated with f2py (version:2).
-! See http://cens.ioc.ee/projects/f2py2e/
+! This file was auto-generated with f2py (version:2.2.4).
+! See:
+! https://web.archive.org/web/20140822061353/http://cens.ioc.ee/projects/f2py2e
